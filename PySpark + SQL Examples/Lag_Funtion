@@ -1,0 +1,56 @@
+
+""" 
+
+| product | month | sales |
+| ------- | ----- | ----- |
+| A       | Jan   | 100   |
+| A       | Feb   | 120   |
+| A       | Mar   | 150   |
+
+
+Question
+
+Show current month sales, previous month sales, and growth.
+
+Expected output:
+
+| month | sales | prev_sales | growth |
+| ----- | ----- | ---------- | ------ |
+| Jan   | 100   | NULL       | NULL   |
+| Feb   | 120   | 100        | 20     |
+| Mar   | 150   | 120        | 30     |
+ """
+
+#SQL Query
+select 
+month, sales, 
+lag(sales) as prev_sales, 
+(prev_sales - sales) as grwoth
+from Sales
+order by month
+
+#if we have product as category then rewrite the sql query as below
+select
+month, sales,
+lag(sales) over (partition by product order by month) as prev_sales,
+(sales - lag(sales) over (partition by product order by month)) as growth
+from Sales      
+
+
+#pyspark code
+from pyspark.sql import SparkSession
+from pyspark.sql import functions as F       
+
+spark = SparkSession.builder.appName("Lag Function Example").getOrCreate()  
+data = [("A", "Jan", 100), ("A", "Feb", 120), ("A", "Mar", 150)]
+columns = ["product", "month", "sales"]     
+
+df = spark.createDataFrame(data, columns)
+from pyspark.sql.window import Window
+windowSpec = Window.partitionBy("product").orderBy("month")
+df = df.withColumn("prev_sales", F.lag("sales").over(windowSpec))   
+df = df.withColumn("growth", F.col("sales") - F.col("prev_sales"))
+df.select("month", "sales", "prev_sales", "growth").orderBy("month").show()
+
+
+

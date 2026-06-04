@@ -1,0 +1,80 @@
+""" #Problem - 1 
+
+Emp
+| emp_id | dept | salary |
+| ------ | ---- | ------ |
+| 101    | IT   | 5000   |
+| 102    | IT   | 7000   |
+| 103    | IT   | 6000   |
+| 104    | HR   | 4000   |
+| 105    | HR   | 5500   |
+
+
+Question
+
+Find the highest-paid employee in each department using ROW_NUMBER()
+
+| dept | emp_id | salary |
+| ---- | ------ | ------ |
+| IT   | 102    | 7000   |
+| HR   | 105    | 5500   |
+
+ROW_NUMBER() is a window function that assigns a unique sequential integer to each row within a partition of the result set.
+
+Why it is used
+
+It is used when you need:
+a unique row index inside each partition
+to rank rows by some order
+to remove duplicates while keeping the first/last row
+to select top-N rows per group
+
+Common uses
+Get the first row per group
+Example: choose the latest order for each customer
+Deduplicate rows
+Keep only rows where ROW_NUMBER = 1 after ordering
+Pagination or ranking
+Number rows in a sorted result for reporting or filtering
+Top-N per partition
+Find top 3 products by sales per category
+
+| emp_id | name  | salary | ROW_NUMBER | RANK | DENSE_RANK |
+| ------ | ----- | ------ | ---------- | ---- | ---------- |
+| 101    | John  | 10000  | 1          | 1    | 1          |
+| 102    | Mike  | 9000   | 2          | 2    | 2          |
+| 103    | Sara  | 9000   | 3          | 2    | 2          |
+| 104    | David | 8000   | 4          | 4    | 3          |
+| 105    | Emma  | 7000   | 5          | 5    | 4          |
+ """
+
+#SQL
+
+select 
+    dept, emp_id, salary, 
+    row_number() over (partition by dept order by salary desc) as rn
+from Emp
+where rn =1;
+
+
+#pyspark
+from pyspark.sql import SparkSession
+from pyspark.sql.window import Window 
+from pyspark.sql.functions import row_number, col
+
+
+spark = SparkSession.builder.appName("RowNumberExample").getOrCreate()  
+
+data = [
+    (101, 'IT', 5000),
+    (102, 'IT', 7000),
+    (103, 'IT', 6000),
+    (104, 'HR', 4000),
+    (105, 'HR', 5500)]
+
+columns = ['emp_id', 'dept', 'salary']
+
+df =spark.createDataFrame(data, columns)
+
+res_df = df.withColumn("rn",row_number().over (Window.partitionBy("dept").orderBy(col("salary").desc())))
+res_df.filterCol(("rn")==1).select("dept","emp_id","salary").show()

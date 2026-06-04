@@ -1,0 +1,58 @@
+<!-- 
+Order
+| order_date | amount |
+| ---------- | ------ |
+| 2024-01-01 | 100    |
+| 2024-01-02 | 200    |
+| 2024-01-03 | 150    |
+| 2024-01-04 | 250    |
+
+Question
+
+Calculate cumulative sales by date.
+
+Expected output:
+
+| order_date | amount | running_total |
+| ---------- | ------ | ------------- |
+| 2024-01-01 | 100    | 100           |
+| 2024-01-02 | 200    | 300           |
+| 2024-01-03 | 150    | 450           |
+| 2024-01-04 | 250    | 700           | -->
+
+#SQL
+
+select 
+order_date,amount,
+sum(amount) over (order by order_date asc
+rows between unbounded preceeding and current row) as running_total
+from orders
+
+#when we have multiple categories and we want to calculate the cumulative sales for each category separately, we can use the following SQL query:
+select 
+order_date,amount,
+sum(amount) over (partition by category 
+order by date asc
+rows between unbounded preceeding and current row)
+as running_total 
+from orders
+
+#python
+
+from pyspark.sql import SparkSession
+from pyspark.sql.window import Window           
+
+spark = SparkSession.builder.appName("RunningTotal").getOrCreate()
+data = [("2024-01-01", 100), ("2024-01-02", 200), ("2024-01-03", 150), ("2024-01-04", 250)]
+columns = ["order_date", "amount"]      
+
+df = spark.createDataFrame(data, columns)
+window_spec = window.orderBy('order_date').rowsBetween(Window.unboundedPreceding, Window.currentRow)
+
+# If we have multiple categories and want to calculate the cumulative sales for each category separately, we can define the window specification as follows:
+window_spec = Window.partitionBy("sales").orderBy('order_date').rowsBetween(Window.unboundedPreceding, Window.currentRow)
+
+
+from pyspark.sql import functions as F
+df = df.withColumn("running_total", F.sum("amount").over(window_spec))
+df.show()
